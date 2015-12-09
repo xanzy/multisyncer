@@ -48,19 +48,20 @@ func (s syncer) run() {
 	store := make(map[interface{}]chan struct{})
 
 	for cmd := range s {
+		l, ok := store[cmd.token]
+
+		if !ok && cmd.action == lock {
+			l = make(chan struct{}, 1)
+			store[cmd.token] = l
+		}
+
 		go func(cmd cmdData) {
 			switch cmd.action {
 			case lock:
-				if c, ok := store[cmd.token]; ok {
-					c <- struct{}{}
-				} else {
-					c := make(chan struct{}, 1)
-					c <- struct{}{}
-					store[cmd.token] = c
-				}
+				l <- struct{}{}
 			case unlock:
-				if c, ok := store[cmd.token]; ok {
-					<-c
+				if ok {
+					<-l
 				}
 			}
 
